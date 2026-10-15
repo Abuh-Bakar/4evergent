@@ -425,6 +425,45 @@ test("CLI v2: activity list 404 → exit 1", () => {
   assert.match(r.stderr, /404/);
 });
 
+test("CLI v2: activity get → prints formatted activity detail", () => {
+  const r = run(["activity", "get", "agent-1", "act-1"], {
+    responses: [
+      { match: "/agents/agent-1/activity/act-1", status: 200, body: { activity: { id: "act-1", agentId: "agent-1", intent: { type: "payment", amount: "10", asset: "XLM" }, status: "confirmed", txHash: "abc123", error: null, createdAt: "2026-01-01T00:00:00Z" } } },
+    ],
+  });
+  assert.equal(r.code, 0);
+  assert.match(r.stdout, /Activity:/);
+  assert.match(r.stdout, /ID:\s+act-1/);
+  assert.match(r.stdout, /Type:\s+payment/);
+  assert.match(r.stdout, /Amount:\s+10 XLM/);
+  assert.match(r.stdout, /Status:\s+confirmed/);
+  assert.match(r.stdout, /TxHash:\s+abc123/);
+});
+
+test("CLI v2: activity get encodes path identifiers", () => {
+  const r = run(["activity", "get", "agent/one", "act one"], {
+    responses: [
+      { match: "/agents/agent%2Fone/activity/act%20one", status: 200, body: { activity: { id: "act one", agentId: "agent/one", status: "queued", createdAt: "2026-01-01T00:00:00Z" } } },
+    ],
+  });
+  assert.equal(r.code, 0);
+  assert.match(r.stdout, /act one/);
+});
+
+test("CLI v2: activity get without both ids shows usage", () => {
+  const r = run(["activity", "get", "agent-1"]);
+  assert.equal(r.code, 1);
+  assert.match(r.stderr, /activity get <agent-id> <activity-id>/);
+});
+
+test("CLI v2: activity get 404 → exit 1", () => {
+  const r = run(["activity", "get", "agent-1", "missing"], {
+    responses: [{ match: "/agents/agent-1/activity/missing", status: 404, body: { error: "not found" } }],
+  });
+  assert.equal(r.code, 1);
+  assert.match(r.stderr, /404/);
+});
+
 test("CLI v2: schedule list → prints schedules", () => {
   const r = run(["schedule", "list", "agent-1"], {
     responses: [
