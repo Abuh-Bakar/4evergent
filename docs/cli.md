@@ -52,6 +52,7 @@ export FOREGENT_API_KEY=your-api-key-here
 4evergent execution cancel <id>             Cancel a queued or executing execution
 4evergent policy get <agent-id>             Show effective policy rules
 4evergent activity list <agent-id> [limit]  List agent activity (limit 1-100, default 50)
+4evergent activity get <agent-id> <activity-id>  Show activity detail
 4evergent schedule list <agent-id> [limit]  List agent schedules (limit 1-100, default 50)
 4evergent schedule get <agent-id> <sch-id>  Show schedule detail
 4evergent intent submit <agent-id> <type> [args...] [--idempotency-key <key>]
@@ -102,6 +103,7 @@ submits twice silently.
 4evergent policy get agent-123
 4evergent activity list agent-123
 4evergent activity list agent-123 10
+4evergent activity get agent-123 act-123
 4evergent schedule list agent-123
 4evergent schedule get agent-123 sch-123
 4evergent intent submit agent-123 payment XLM 25 GDAAAA... "weekly payout"

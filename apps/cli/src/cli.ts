@@ -98,18 +98,6 @@ function formatExecution(e: any) {
 `;
 }
 
-function _formatApproval(a: any) {
-  return `Approval:
-  ID:           ${a.id}
-  Agent:        ${a.agentId}
-  Activity:     ${a.activityId ?? "-"}
-  Status:       ${a.status}
-  Created:      ${a.createdAt ?? "-"}
-  Expires:      ${a.expiresAt ?? "-"}
-  Approver:     ${a.approver ?? "-"}
-`;
-}
-
 // --- Commands ---
 
 async function cmdHealth() {
@@ -306,7 +294,7 @@ function formatPolicy(p: any) {
 `;
 }
 
-function _formatActivity(a: any) {
+function formatActivity(a: any) {
   return `Activity:
   ID:           ${a.id}
   Agent:        ${a.agentId}
@@ -443,6 +431,23 @@ async function cmdActivityList(agentId: string, limit: string) {
     for (const a of activity) {
       console.log(`${a.id.slice(0, 18)}\t${a.agentId.slice(0, 12)}\t${a.intent?.type ?? "-"}\t${a.status}\t${new Date(a.createdAt).toLocaleString()}`);
     }
+    return 0;
+  } catch (err: any) {
+    console.error(`Error: ${err.message}`);
+    return 1;
+  }
+}
+
+async function cmdActivityGet(agentId: string, activityId: string) {
+  if (!agentId || !activityId) {
+    console.error("Usage: 4evergent activity get <agent-id> <activity-id>");
+    return 1;
+  }
+  try {
+    const { body } = await request(
+      `/agents/${encodeURIComponent(agentId)}/activity/${encodeURIComponent(activityId)}`,
+    );
+    console.log(formatActivity(body.activity));
     return 0;
   } catch (err: any) {
     console.error(`Error: ${err.message}`);
@@ -763,7 +768,7 @@ const COMMANDS_HELP = [
   "  approval list | approve <id> | reject <id>",
   "  execution list | get <id> | retry <id> | cancel <id>",
   "  policy get <agent-id> | update <agent-id>",
-  "  activity list <agent-id> [limit]",
+  "  activity list <agent-id> [limit] | get <agent-id> <activity-id>",
   "  schedule list <agent-id> [limit] | get <agent-id> <schedule-id> | create <agent-id> <cron> <intent> | update <agent-id> <schedule-id> <cron> | pause <agent-id> <schedule-id> | resume <agent-id> <schedule-id> | disable <agent-id> <schedule-id> | delete <agent-id> <schedule-id>",
   "  intent submit <agent-id> <type> [args...] [--idempotency-key <key>]",
 ].join("\n");
@@ -830,8 +835,9 @@ async function main(): Promise<number> {
     case "activity":
       switch (sub) {
         case "list": return cmdActivityList(argv[2] ?? "", argv[3] ?? "");
+        case "get": return cmdActivityGet(argv[2] ?? "", argv[3] ?? "");
         default:
-          console.error("Usage: 4evergent activity list <agent-id> [limit]");
+          console.error("Usage: 4evergent activity <list <agent-id> [limit] | get <agent-id> <activity-id>>");
           return 1;
       }
     case "schedule":
