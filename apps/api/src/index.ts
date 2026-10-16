@@ -1662,8 +1662,19 @@ function parseIntent(body: unknown): AgentIntent {
       };
     }
     case "contract_call":
-    case "account_settings":
       throw new Error(`intent type '${b.type}' is not yet supported by the transaction pipeline`);
+    case "account_settings": {
+      if (typeof b.setting !== "string" || b.setting.trim().length === 0) {
+        throw new Error("account_settings.setting is required");
+      }
+      if (typeof b.reason !== "string") throw new Error("account_settings.reason is required");
+      return {
+        type: "account_settings",
+        setting: b.setting,
+        value: b.value,
+        reason: b.reason,
+      };
+    }
     default:
       throw new Error(`unknown intent type: ${b.type}`);
   }
