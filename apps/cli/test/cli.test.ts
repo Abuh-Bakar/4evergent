@@ -20,6 +20,7 @@ const _require = createRequire(import.meta.url);
 const TSX_BIN = _require.resolve("tsx/cli");
 
 const CLI = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "src", "cli.ts");
+const PACKAGE_VERSION = _require("../package.json").version as string;
 
 interface RunResult {
   code: number;
@@ -84,6 +85,22 @@ function run(
     rmSync(wrapperPath, { force: true });
   }
 }
+
+for (const flag of ["--version", "-v"]) {
+  test(`CLI: ${flag} prints the package version without contacting the API`, () => {
+    const r = run([flag], { networkFail: true });
+    assert.equal(r.code, 0);
+    assert.equal(r.stdout, `${PACKAGE_VERSION}\n`);
+    assert.equal(r.stderr, "");
+  });
+}
+
+test("CLI: help documents both version flags", () => {
+  const r = run(["--help"]);
+  assert.equal(r.code, 0);
+  assert.match(r.stdout, /--version/);
+  assert.match(r.stdout, /-v/);
+});
 
 test("CLI: health success → exit 0, prints status", () => {
   const r = run(["health"], {

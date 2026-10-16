@@ -11,6 +11,10 @@
  */
 
 import { exit } from "node:process";
+import { createRequire } from "node:module";
+
+// The build replaces this lookup with the package version for a standalone CLI.
+const VERSION: string = createRequire(import.meta.url)("../package.json").version;
 
 const API_URL = process.env.FOREGENT_API_URL ?? "http://127.0.0.1:3000";
 const API_KEY = process.env.FOREGENT_API_KEY;
@@ -753,6 +757,7 @@ const argv = process.argv.slice(2);
 
 const COMMANDS_HELP = [
   "Commands:",
+  "  --version, -v  Print the CLI package version",
   "  health",
   "  agent list | get <id> | create <name> | pause <id> | resume <id> | disable <id>",
   "  approval list | approve <id> | reject <id>",
@@ -766,6 +771,11 @@ const COMMANDS_HELP = [
 async function main(): Promise<number> {
   const cmd = argv[0];
   const sub = argv[1];
+
+  if (cmd === "--version" || cmd === "-v") {
+    console.log(VERSION);
+    return 0;
+  }
 
   if (!cmd) {
     console.error(`Usage: 4evergent <command> [args...]\n\n${COMMANDS_HELP}`);
