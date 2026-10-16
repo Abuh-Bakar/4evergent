@@ -19,6 +19,90 @@ All endpoints except `GET /health` require authentication.
 Unauthenticated requests to protected endpoints return
 `{"error":"unauthorized"}` with status `401`.
 
+## User Authentication (Browser Sessions)
+
+In addition to API-key auth for machine clients, the API supports
+browser-based user sessions for humans. Sessions live in an HttpOnly,
+SameSite=Lax cookie named `four_eg_session`. Three login methods are
+supported: email+password, Google OAuth, and Stellar wallet signature.
+
+CSRF protection: cookie-authenticated state-changing requests must carry
+the `X-Requested-With` header. Bearer/API-key requests are unaffected.
+
+### GET /auth/config
+
+Public. Returns which login methods the server has enabled:
+
+```json
+{
+  "email": true,
+  "google": true,
+  "stellar": true,
+  "allowRegistration": true
+}
+```
+
+### POST /auth/register
+
+Create a new email+password account. Only available when
+`allowRegistration` is `true`.
+
+Body: `{ "email": string (required), "password": string (required, min 8 chars), "displayName"?: string }`
+
+- `201` → `{ "user": { "id", "email", "displayName" } }` — session cookie is set
+- `400` → invalid JSON / missing fields / password too short
+- `409` → email already registered
+- `403` → registration disabled
+
+### POST /auth/login/email
+
+Login with email+password.
+
+Body: `{ "email": string (required), "password": string (required) }`
+
+- `200` → `{ "user": { "id", "email", "displayName" } }` — session cookie is set
+- `401` → invalid email or password
+
+### GET /auth/me
+
+Get the current logged-in user (from session cookie).
+
+- `200` → `{ "user": { "id", "email", "displayName", "stellarPublicKey" } }`
+- `401` → not logged in
+
+### POST /auth/logout
+
+Invalidate the current session.
+
+- `200` → `{ "ok": true }` — session cookie is cleared
+
+### GET /auth/google/start
+
+Start Google OAuth flow. Redirects to Google's authorization endpoint.
+
+### GET /auth/google/callback
+
+Google OAuth callback. Exchanges the authorization code for a token,
+creates/fetches the user, and sets the session cookie.
+
+### POST /auth/stellar/challenge
+
+Request a Stellar signature challenge.
+
+Body: `{ "publicKey": string (required, Stellar address) }`
+
+- `200` → `{ "challenge": string }` — the user signs this with their wallet
+- `400` → invalid Stellar address
+
+### POST /auth/stellar/verify
+
+Verify a Stellar signature and log the user in.
+
+Body: `{ "publicKey": string (required), "signature": string (required), "challenge": string (required) }`
+
+- `200` → `{ "user": { "id", "stellarPublicKey", "displayName" } }` — session cookie is set
+- `400` → invalid signature / expired challenge
+
 ## Ownership
 
 All data is owner-scoped. Requests only see records owned by the
