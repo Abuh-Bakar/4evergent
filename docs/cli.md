@@ -15,6 +15,13 @@ pnpm --filter @4evergent/cli build
 npx tsx apps/cli/src/cli.ts health
 ```
 
+## Version
+
+Run `4evergent --version` or `4evergent -v` to print the CLI package version and
+exit successfully. This works offline and does not require API configuration.
+The build embeds the version from `apps/cli/package.json`; source runs read the
+same package metadata.
+
 ## Configuration
 
 | Variable | Default | Description |
