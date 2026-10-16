@@ -8,11 +8,19 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { writeFileSync, rmSync } from "node:fs";
 import path from "node:path";
+import { createRequire } from "node:module";
+
+// Resolve the tsx CLI entry point directly so we can spawn `node tsx/cli`
+// instead of `npx tsx`, which goes through a .ps1 wrapper that fails under
+// restricted PowerShell execution policies on Windows.
+const _require = createRequire(import.meta.url);
+const TSX_BIN = _require.resolve("tsx/cli");
 
 const CLI = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "src", "cli.ts");
+const PACKAGE_VERSION = _require("../package.json").version as string;
 
 interface RunResult {
   code: number;
@@ -52,14 +60,17 @@ function run(
   };
 
   // tsx doesn't support --require preambles; use a wrapper instead.
+  // On Windows, Node's ESM loader requires file:// URLs for absolute paths
+  // inside dynamic import() calls, but tsx itself takes a plain file path.
+  const cliUrl = pathToFileURL(CLI).href;
   const wrapper = `
     ${prelude}
-    await import(${JSON.stringify(CLI)});
+    await import(${JSON.stringify(cliUrl)});
   `;
   const wrapperPath = CLI.replace(/\.ts$/, ".mock-wrapper.mts");
   writeFileSync(wrapperPath, wrapper);
   try {
-    const r = spawnSync("npx", ["tsx", wrapperPath, ...args], {
+    const r = spawnSync(process.execPath, [TSX_BIN, wrapperPath, ...args], {
       encoding: "utf-8",
       env,
       cwd: path.dirname(CLI),
@@ -74,6 +85,22 @@ function run(
     rmSync(wrapperPath, { force: true });
   }
 }
+
+for (const flag of ["--version", "-v"]) {
+  test(`CLI: ${flag} prints the package version without contacting the API`, () => {
+    const r = run([flag], { networkFail: true });
+    assert.equal(r.code, 0);
+    assert.equal(r.stdout, `${PACKAGE_VERSION}\n`);
+    assert.equal(r.stderr, "");
+  });
+}
+
+test("CLI: help documents both version flags", () => {
+  const r = run(["--help"]);
+  assert.equal(r.code, 0);
+  assert.match(r.stdout, /--version/);
+  assert.match(r.stdout, /-v/);
+});
 
 test("CLI: health success → exit 0, prints status", () => {
   const r = run(["health"], {
@@ -829,4 +856,14 @@ test("CLI v3: agent create → API key never appears in output", () => {
   });
   assert.equal(r.code, 0);
   assert.ok(!r.stdout.includes("«redacted:sk-…»"));
+});
+
+test("CLI: no command → usage lists all eight top-level commands", () => {
+  const r = run([]);
+  assert.equal(r.code, 1);
+  assert.match(r.stderr, /Usage/);
+  assert.match(r.stderr, /policy/);
+  assert.match(r.stderr, /activity/);
+  assert.match(r.stderr, /schedule/);
+  assert.match(r.stderr, /intent/);
 });

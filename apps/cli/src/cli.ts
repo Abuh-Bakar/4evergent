@@ -11,6 +11,10 @@
  */
 
 import { exit } from "node:process";
+import { createRequire } from "node:module";
+
+// The build replaces this lookup with the package version for a standalone CLI.
+const VERSION: string = createRequire(import.meta.url)("../package.json").version;
 
 const API_URL = process.env.FOREGENT_API_URL ?? "http://127.0.0.1:3000";
 const API_KEY = process.env.FOREGENT_API_KEY;
@@ -756,12 +760,30 @@ async function cmdScheduleDelete(agentId: string, scheduleId: string) {
 
 const argv = process.argv.slice(2);
 
+const COMMANDS_HELP = [
+  "Commands:",
+  "  --version, -v  Print the CLI package version",
+  "  health",
+  "  agent list | get <id> | create <name> | pause <id> | resume <id> | disable <id>",
+  "  approval list | approve <id> | reject <id>",
+  "  execution list | get <id> | retry <id> | cancel <id>",
+  "  policy get <agent-id> | update <agent-id>",
+  "  activity list <agent-id> [limit] | get <agent-id> <activity-id>",
+  "  schedule list <agent-id> [limit] | get <agent-id> <schedule-id> | create <agent-id> <cron> <intent> | update <agent-id> <schedule-id> <cron> | pause <agent-id> <schedule-id> | resume <agent-id> <schedule-id> | disable <agent-id> <schedule-id> | delete <agent-id> <schedule-id>",
+  "  intent submit <agent-id> <type> [args...] [--idempotency-key <key>]",
+].join("\n");
+
 async function main(): Promise<number> {
   const cmd = argv[0];
   const sub = argv[1];
 
+  if (cmd === "--version" || cmd === "-v") {
+    console.log(VERSION);
+    return 0;
+  }
+
   if (!cmd) {
-    console.error("Usage: 4evergent <command> [args...]\n\nCommands:\n  health\n  agent list | get <id> | pause <id> | resume <id> | disable <id>\n  approval list | approve <id> | reject <id>\n  execution list | get <id> | retry <id> | cancel <id>");
+    console.error(`Usage: 4evergent <command> [args...]\n\n${COMMANDS_HELP}`);
     return 1;
   }
 
@@ -843,7 +865,7 @@ async function main(): Promise<number> {
     case "--help":
     case "-h":
     case "help":
-      console.log("4evergent Operator CLI\n\nCommands:\n  health\n  agent list | get <id> | create <name> | pause <id> | resume <id> | disable <id>\n  approval list | approve <id> | reject <id>\n  execution list | get <id> | retry <id> | cancel <id>\n  policy get <agent-id> | update <agent-id>\n  activity list <agent-id> [limit] | get <agent-id> <activity-id>\n  schedule list <agent-id> [limit] | get <agent-id> <schedule-id> | create <agent-id> <cron> <intent> | update <agent-id> <schedule-id> <cron> | pause <agent-id> <schedule-id> | resume <agent-id> <schedule-id> | disable <agent-id> <schedule-id> | delete <agent-id> <schedule-id>\n  intent submit <agent-id> <type> [args...] [--idempotency-key <key>]");
+      console.log(`4evergent Operator CLI\n\n${COMMANDS_HELP}`);
       return 0;
     default:
       console.error(`Unknown command: ${cmd}`);
