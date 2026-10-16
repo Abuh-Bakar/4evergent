@@ -673,14 +673,42 @@ export async function createApiServer(options: ServerOptions) {
       return json(res, { error: "displayName must be 100 characters or fewer" }, 400);
     }
 
-    const description = typeof b.description === "string" ? b.description : "";
+    let description = "";
+    if (b.description !== undefined) {
+      if (typeof b.description !== "string") {
+        return json(res, { error: "description must be a string" }, 400);
+      }
+      if (b.description.length > 500) {
+        return json(res, { error: "description must be 500 characters or fewer" }, 400);
+      }
+      description = b.description;
+    }
 
     let capabilities: string[] = [];
     if (b.capabilities !== undefined) {
       if (!Array.isArray(b.capabilities) || !b.capabilities.every((c) => typeof c === "string")) {
         return json(res, { error: "capabilities must be an array of strings" }, 400);
       }
-      capabilities = b.capabilities as string[];
+      if (b.capabilities.length > 32) {
+        return json(res, { error: "capabilities must be 32 entries or fewer" }, 400);
+      }
+      const trimmedCaps: string[] = [];
+      const seen = new Set<string>();
+      for (const cap of b.capabilities) {
+        const trimmed = cap.trim();
+        if (trimmed.length === 0) {
+          return json(res, { error: "capability entries cannot be empty" }, 400);
+        }
+        if (trimmed.length > 32) {
+          return json(res, { error: "capability entries must be 32 characters or fewer" }, 400);
+        }
+        if (seen.has(trimmed)) {
+          return json(res, { error: "capabilities must not contain duplicate entries" }, 400);
+        }
+        seen.add(trimmed);
+        trimmedCaps.push(trimmed);
+      }
+      capabilities = trimmedCaps;
     }
 
     let stellarAddress = "";
